@@ -1,0 +1,39 @@
+<resources>
+    <string name="app_name">Cashi</string>
+
+    <!-- Navigation -->
+    <string name="nav_send">Send</string>
+    <string name="nav_history">History</string>
+
+    <!-- Screens -->
+    <string name="send_title">Send payment</string>
+    <string name="history_title">Transaction history</string>
+
+    <!-- Send form -->
+    <string name="send_email_label">Recipient email</string>
+    <string name="send_amount_label">Amount</string>
+    <string name="send_currency_label">Currency</string>
+    <string name="send_button">Send</string>
+
+    <!-- Confirmation -->
+    <string name="confirm_title">Confirm payment</string>
+    <string name="confirm_message">Send %1$s to %2$s?</string>
+    <string name="confirm_send">Send</string>
+    <string name="confirm_cancel">Cancel</string>
+
+    <!-- Results -->
+    <string name="payment_sent">Payment sent</string>
+    <string name="payment_sent_not_recorded">Payment sent, but it couldn\'t be added to history yet</string>
+    <string name="error_invalid_recipient">Invalid recipient</string>
+    <string name="error_invalid_amount">Invalid amount</string>
+    <string name="error_unsupported_currency">Unsupported currency</string>
+    <string name="error_no_connection">No connection. Check your network and try again.</string>
+    <string name="error_generic">Something went wrong. Please try again.</string>
+
+    <!-- History -->
+    <string name="history_empty">No payments yet</string>
+    <string name="history_error">Couldn\'t load your history</string>
+    <string name="history_retry">Try again</string>
+    <!-- Formatted amount followed by the ISO currency code, e.g. "$10.50 USD" -->
+    <string name="history_amount_with_currency">%1$s %2$s</string>
+</resources>
