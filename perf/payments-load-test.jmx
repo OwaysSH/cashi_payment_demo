@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Load test for POST /payments: 5 concurrent users × 20 iterations (100 requests) by default.
+  Every request is a distinct, valid payment with a new Idempotency-Key, so the server really
+  processes it (no idempotent replays). Override any setting with -J<name>=<value>, e.g. -Jloops=50.
+  Run in non-GUI mode via perf/run-load-test.sh.
+-->
+<jmeterTestPlan version="1.2" properties="5.0" jmeter="5.6.3">
+  <hashTree>
+    <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="Cashi payments load test">
+      <elementProp name="TestPlan.user_defined_variables" elementType="Arguments" guiclass="ArgumentsPanel" testclass="Arguments">
+        <collectionProp name="Arguments.arguments">
+          <elementProp name="host" elementType="Argument">
+            <stringProp name="Argument.name">host</stringProp>
+            <stringProp name="Argument.value">${__P(host,127.0.0.1)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="port" elementType="Argument">
+            <stringProp name="Argument.name">port</stringProp>
+            <stringProp name="Argument.value">${__P(port,8080)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="threads" elementType="Argument">
+            <stringProp name="Argument.name">threads</stringProp>
+            <stringProp name="Argument.value">${__P(threads,5)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="rampUp" elementType="Argument">
+            <stringProp name="Argument.name">rampUp</stringProp>
+            <stringProp name="Argument.value">${__P(rampUp,5)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="loops" elementType="Argument">
+            <stringProp name="Argument.name">loops</stringProp>
+            <stringProp name="Argument.value">${__P(loops,20)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+          <elementProp name="maxResponseMs" elementType="Argument">
+            <stringProp name="Argument.name">maxResponseMs</stringProp>
+            <stringProp name="Argument.value">${__P(maxResponseMs,500)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
+        </collectionProp>
+      </elementProp>
+      <boolProp name="TestPlan.functional_mode">false</boolProp>
+      <boolProp name="TestPlan.serialize_threadgroups">false</boolProp>
+    </TestPlan>
+    <hashTree>
+      <ConfigTestElement guiclass="HttpDefaultsGui" testclass="ConfigTestElement" testname="Backend address">
+        <stringProp name="HTTPSampler.protocol">http</stringProp>
+        <stringProp name="HTTPSampler.domain">${host}</stringProp>
+        <stringProp name="HTTPSampler.port">${port}</stringProp>
+        <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments">
+          <collectionProp name="Arguments.arguments"/>
+        </elementProp>
+      </ConfigTestElement>
+      <hashTree/>
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Concurrent users">
+        <stringProp name="ThreadGroup.num_threads">${threads}</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">${rampUp}</stringProp>
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController">
+          <stringProp name="LoopController.loops">${loops}</stringProp>
+          <boolProp name="LoopController.continue_forever">false</boolProp>
+        </elementProp>
+        <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
+        <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
+        <boolProp name="ThreadGroup.scheduler">false</boolProp>
+      </ThreadGroup>
+      <hashTree>
+        <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="JSON + new Idempotency-Key per request">
+          <collectionProp name="HeaderManager.headers">
+            <elementProp name="" elementType="Header">
+              <stringProp name="Header.name">Content-Type</stringProp>
+              <stringProp name="Header.value">application/json</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="Header">
+              <stringProp name="Header.name">Idempotency-Key</stringProp>
+              <stringProp name="Header.value">${__UUID()}</stringProp>
+            </elementProp>
+          </collectionProp>
+        </HeaderManager>
+        <hashTree/>
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="POST /payments">
+          <stringProp name="HTTPSampler.path">/payments</stringProp>
+          <stringProp name="HTTPSampler.method">POST</stringProp>
+          <boolProp name="HTTPSampler.follow_redirects">false</boolProp>
+          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+          <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+            <collectionProp name="Arguments.arguments">
+              <elementProp name="" elementType="HTTPArgument">
+                <boolProp name="HTTPArgument.always_encode">false</boolProp>
+                <stringProp name="Argument.value">{"recipientEmail":"${recipientEmail}","amount":${amount},"currency":"${currency}"}</stringProp>
+                <stringProp name="Argument.metadata">=</stringProp>
+              </elementProp>
+            </collectionProp>
+          </elementProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <JSR223PreProcessor guiclass="TestBeanGUI" testclass="JSR223PreProcessor" testname="Distinct valid payment">
+            <stringProp name="scriptLanguage">groovy</stringProp>
+            <stringProp name="cacheKey">true</stringProp>
+            <stringProp name="script">// Unique recipient, random amount 1.00–999.99 (always 2 decimals), random supported currency.
+def random = new Random()
+vars.put('recipientEmail', "load-${ctx.threadNum + 1}-${vars.iteration}@example.com")
+vars.put('amount', String.format(Locale.ROOT, '%d.%02d', 1 + random.nextInt(999), random.nextInt(100)))
+vars.put('currency', ['USD', 'EUR'][random.nextInt(2)])</stringProp>
+          </JSR223PreProcessor>
+          <hashTree/>
+          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Status is 201 Created">
+            <collectionProp name="Asserion.test_strings">
+              <stringProp name="49587">201</stringProp>
+            </collectionProp>
+            <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
+            <boolProp name="Assertion.assume_success">false</boolProp>
+            <intProp name="Assertion.test_type">8</intProp>
+          </ResponseAssertion>
+          <hashTree/>
+          <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="Response has a payment id">
+            <stringProp name="JSON_PATH">$.id</stringProp>
+            <stringProp name="EXPECTED_VALUE"></stringProp>
+            <boolProp name="JSONVALIDATION">false</boolProp>
+            <boolProp name="EXPECT_NULL">false</boolProp>
+            <boolProp name="INVERT">false</boolProp>
+            <boolProp name="ISREGEX">false</boolProp>
+          </JSONPathAssertion>
+          <hashTree/>
+          <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="Response currency matches the request">
+            <stringProp name="JSON_PATH">$.currency</stringProp>
+            <stringProp name="EXPECTED_VALUE">${currency}</stringProp>
+            <boolProp name="JSONVALIDATION">true</boolProp>
+            <boolProp name="EXPECT_NULL">false</boolProp>
+            <boolProp name="INVERT">false</boolProp>
+            <boolProp name="ISREGEX">false</boolProp>
+          </JSONPathAssertion>
+          <hashTree/>
+          <DurationAssertion guiclass="DurationAssertionGui" testclass="DurationAssertion" testname="Response within maxResponseMs">
+            <stringProp name="DurationAssertion.duration">${maxResponseMs}</stringProp>
+          </DurationAssertion>
+          <hashTree/>
+        </hashTree>
+      </hashTree>
+    </hashTree>
+  </hashTree>
+</jmeterTestPlan>
