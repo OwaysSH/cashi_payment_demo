@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark mode: the dark brand background (matches DarkColors.background). -->
+    <style name="Theme.Cashi" parent="android:Theme.Material.NoActionBar">
+        <item name="android:colorBackground">#0E1415</item>
+    </style>
+</resources>

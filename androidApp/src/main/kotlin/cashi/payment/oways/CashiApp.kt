@@ -2,7 +2,6 @@ package cashi.payment.oways
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -28,11 +27,12 @@ import cashi.payment.oways.navigation.TopLevelDestination
 import cashi.payment.oways.navigation.navigateToTopLevel
 import cashi.payment.oways.ui.AppTestTags
 import cashi.payment.oways.ui.testTagsAsResourceIds
+import cashi.payment.oways.ui.theme.CashiTheme
 
 /** App root: bottom navigation between the Send and History screens. */
 @Composable
 fun CashiApp() {
-    MaterialTheme {
+    CashiTheme {
         val navController = rememberNavController()
         val backStackEntry by navController.currentBackStackEntryAsState()
         val currentDestination = backStackEntry?.destination

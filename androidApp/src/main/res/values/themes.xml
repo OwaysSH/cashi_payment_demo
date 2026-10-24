@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Window theme behind Compose: the brand background, so launch shows no off-color flash. -->
+    <style name="Theme.Cashi" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:colorBackground">#F4FBFA</item>
+    </style>
+</resources>
