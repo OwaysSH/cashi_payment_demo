@@ -14,6 +14,8 @@
     <string name="send_amount_label">Amount</string>
     <string name="send_currency_label">Currency</string>
     <string name="send_button">Send</string>
+    <string name="currency_name_usd">US dollar</string>
+    <string name="currency_name_eur">Euro</string>
 
     <!-- Confirmation -->
     <string name="confirm_title">Confirm payment</string>
@@ -32,6 +34,7 @@
 
     <!-- History -->
     <string name="history_empty">No payments yet</string>
+    <string name="history_empty_hint">Payments you send will appear here.</string>
     <string name="history_error">Couldn\'t load your history</string>
     <string name="history_retry">Try again</string>
     <!-- Formatted amount followed by the ISO currency code, e.g. "$10.50 USD" -->
