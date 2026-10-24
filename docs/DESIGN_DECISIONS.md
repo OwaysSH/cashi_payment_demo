@@ -276,7 +276,7 @@ app-specific keep rules where needed, and run a release smoke test against an HT
 
 **D49. Fixed brand colors in light and dark mode, not dynamic color.**
 Why: a payment app is recognized by its brand; with Material You's wallpaper-based colors the app,
-its screenshots and the demo video would look different on every device. The palette (emerald teal
+its screenshots and the demo would look different on every device. The palette (emerald teal
 with an amber accent) is defined as full Material 3 tonal roles for both modes, and every text and
 background pair meets WCAG AA contrast. Alternative: `dynamicLightColorScheme`/`dynamicDarkColorScheme`
 on Android 12+ (the app would blend in with the system, at the cost of a consistent identity).

@@ -91,7 +91,7 @@ Build output and ignored local files (`build/`, `.gradle/`, `local.properties`, 
 │   ├── DESIGN_DECISIONS.md           D1–D49: decisions, reasons, alternatives, limitations
 │   ├── API.md                        REST contract: request, responses, errors, idempotency, curl
 │   ├── TEST_TAGS.md                  UI test ids (Compose test tags) used by Appium
-│   └── DEMO.md                       Script for the 4-minute demo video
+│   └── DEMO.md                       Demo walkthrough: every feature, step by step
 ├── shared/                           KMP library: everything that isn't UI
 │   ├── build.gradle.kts              Targets android + jvm, dependencies, device-test arguments
 │   └── src/

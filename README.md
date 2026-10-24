@@ -99,7 +99,7 @@ All library versions are managed in [gradle/libs.versions.toml](gradle/libs.vers
 | `server/` | Ktor backend (JVM), depends on `shared` through its `jvm()` target. Port `8080`. |
 | `perf/` | JMeter load test for `POST /payments` (plain folder; see [perf/README.md](perf/README.md)). |
 | `e2e/` | Appium UI tests: a standalone Gradle build, not part of the app build (`./gradlew -p e2e test --rerun`; see [e2e/README.md](e2e/README.md)). |
-| `docs/` | [Project tour](docs/PROJECT_TOUR.md), [Architecture](docs/ARCHITECTURE.md), [Design decisions](docs/DESIGN_DECISIONS.md), [Demo script](docs/DEMO.md), [API contract](docs/API.md), [UI test ids](docs/TEST_TAGS.md). |
+| `docs/` | [Project tour](docs/PROJECT_TOUR.md), [Architecture](docs/ARCHITECTURE.md), [Design decisions](docs/DESIGN_DECISIONS.md), [Demo walkthrough](docs/DEMO.md), [API contract](docs/API.md), [UI test ids](docs/TEST_TAGS.md). |
 | `scripts/` | `device-setup.sh` / `.bat` (`adb reverse` for a real device). |
 | `.run/` | Shared Android Studio / IntelliJ run configurations (**Server**, **Server tests**). |
 | `firebase.json`, `.firebaserc`, `firestore.rules` | Firebase CLI config, emulator ports and the Firestore security rules. |
@@ -375,12 +375,11 @@ All 49 decisions, with reasons, alternatives and trade-offs, are in
 
 ## Demo
 
-A 4-minute walkthrough on a real device, with each payment appearing in the real Firebase console at
-the same time as in the app: happy path and real-time History, validation errors, a network-failure
-retry that creates exactly one payment, the Appium tests running live, and the Cucumber and JMeter
-reports. The script, checklist and recording setup are in [docs/DEMO.md](docs/DEMO.md).
-
-**Video:** _link to be added after recording._
+[docs/DEMO.md](docs/DEMO.md) is a step-by-step walkthrough you can follow to see every feature on a
+real device, with each payment appearing in the Firestore Emulator UI at the same time as in the
+app: happy path and real-time History, validation errors, a network-failure retry that creates
+exactly one payment, the Appium tests, and the Cucumber and JMeter reports. It uses the
+[Quick start](#quick-start) setup and ends with a checklist of the expected results.
 
 ## How this project was built
 
