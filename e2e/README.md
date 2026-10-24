@@ -95,5 +95,6 @@ Each test gets a fresh session and the app is relaunched on the Send screen.
 | Payment never appears in History | Firestore emulator not running, or `adb reverse tcp:8085` missing |
 | Every first lookup times out (`NoSuchElementException` for `send_email_field`) | Ids are being auto-prefixed with the package; the session must set `appium:disableIdLocatorAutocompletion=true` (see above) |
 | The email is typed, then the next lookup times out and the launcher is in front | The app was closed by a Back press from `hideKeyboard()`; the session must set `appium:hideKeyboard=true` and the tests must not call `driver.hideKeyboard()` (see above) |
+| "App cashi.payment.oways is not installed", or `SessionNotCreatedException`, right after `connectedDebugAndroidTest` | The instrumented tests uninstall the app when they finish. Run `./gradlew :androidApp:installDebug` before `./gradlew -p e2e test --rerun` |
 | An element id isn't found | App build out of date: rerun `./gradlew :androidApp:installDebug` (ids are listed in docs/TEST_TAGS.md) |
 | UiAutomator2 server install fails on the device | Enable "Install via USB" / security settings (see Prerequisites) |

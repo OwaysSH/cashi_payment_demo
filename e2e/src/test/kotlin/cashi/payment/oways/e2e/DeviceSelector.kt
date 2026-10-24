@@ -4,7 +4,9 @@ import java.io.File
 
 /**
  * Picks the device to test: `ANDROID_SERIAL` if set, otherwise the single device that
- * `adb devices` reports as ready. Fails with a clear message for zero or several devices.
+ * `adb devices` reports as ready. Fails with a clear message for zero or several devices. Also
+ * tells whether the app under test is installed, so a missing app fails with a clear message
+ * instead of Appium's generic session error.
  */
 internal object DeviceSelector {
 
@@ -12,6 +14,16 @@ internal object DeviceSelector {
     private const val ANDROID_HOME_ENV = "ANDROID_HOME"
     private const val READY_STATE = "device"
     private const val ADB_FALLBACK = "adb"
+    private const val INSTALLED_PACKAGE_PREFIX = "package:"
+
+    /** Whether [packageName] is installed on the device [udid] (`adb shell pm path`). */
+    fun isAppInstalled(udid: String, packageName: String): Boolean {
+        val process = ProcessBuilder(adbPath(), "-s", udid, "shell", "pm", "path", packageName)
+            .redirectErrorStream(true)
+            .start()
+        val output = process.inputStream.bufferedReader().readText()
+        return process.waitFor() == 0 && output.lineSequence().any { it.startsWith(INSTALLED_PACKAGE_PREFIX) }
+    }
 
     fun udid(): String {
         System.getenv(SERIAL_ENV)?.takeIf { it.isNotBlank() }?.let { return it }

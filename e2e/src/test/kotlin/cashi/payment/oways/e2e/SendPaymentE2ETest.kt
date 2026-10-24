@@ -23,7 +23,7 @@ class SendPaymentE2ETest {
 
     @AfterEach
     fun closeSession() {
-        app.close()
+        if (::app.isInitialized) app.close() // start() may have failed, e.g. app not installed
     }
 
     @Test

@@ -87,8 +87,13 @@ internal class AppiumSession private constructor(private val driver: AndroidDriv
 
         /** Starts a session on the installed debug app (never reinstalled or cleared). */
         fun start(): AppiumSession {
+            val udid = DeviceSelector.udid()
+            check(DeviceSelector.isAppInstalled(udid, APP_PACKAGE)) {
+                "App $APP_PACKAGE is not installed on $udid. connectedDebugAndroidTest uninstalls it when it " +
+                    "finishes; run ./gradlew :androidApp:installDebug first."
+            }
             val options = UiAutomator2Options()
-                .setUdid(DeviceSelector.udid())
+                .setUdid(udid)
                 .setAppPackage(APP_PACKAGE)
                 .setAppActivity(APP_ACTIVITY)
                 .setNoReset(true)

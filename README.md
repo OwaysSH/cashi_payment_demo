@@ -295,6 +295,7 @@ Notes:
 | History stays empty / payments don't appear in the Emulator UI | Emulator not running, `adb reverse tcp:8085` missing, or the emulator's project id doesn't match `google-services.json` (reviewers: `--project demo-cashi`). |
 | Gradle: "api.baseUrl must start with http:// or https://" (or a similar `firestore.*` message) | Fix the value in `local.properties` ([keys](#localproperties-keys-optional-all-builds)). |
 | Device tests / e2e can't reach the device | Check `adb devices`; with several devices set `ANDROID_SERIAL`. |
+| e2e: "App cashi.payment.oways is not installed" or `SessionNotCreatedException` after `connectedDebugAndroidTest` | The instrumented tests uninstall the app when they finish. Run `./gradlew :androidApp:installDebug` before `./gradlew -p e2e test --rerun`. |
 | e2e or load-test issues | See the troubleshooting sections in [e2e/README.md](e2e/README.md) and [perf/README.md](perf/README.md). |
 
 ## API
