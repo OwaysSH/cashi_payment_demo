@@ -88,7 +88,7 @@ Build output and ignored local files (`build/`, `.gradle/`, `local.properties`, 
 ├── docs/
 │   ├── PROJECT_TOUR.md               This document
 │   ├── ARCHITECTURE.md               Modules, layers, flows, expect/actual, error model, iOS potential
-│   ├── DESIGN_DECISIONS.md           D1–D48: decisions, reasons, alternatives, limitations
+│   ├── DESIGN_DECISIONS.md           D1–D49: decisions, reasons, alternatives, limitations
 │   ├── API.md                        REST contract: request, responses, errors, idempotency, curl
 │   ├── TEST_TAGS.md                  UI test ids (Compose test tags) used by Appium
 │   └── DEMO.md                       Script for the 4-minute demo video
@@ -107,7 +107,7 @@ Build output and ignored local files (`build/`, `.gradle/`, `local.properties`, 
 │   ├── google-services.json.example  Placeholder Firebase config for the emulator-only path
 │   ├── proguard-rules.pro            Empty on purpose: minification is off (D48)
 │   └── src/
-│       ├── main/                     Activity, Application, navigation, screens, ViewModels, res
+│       ├── main/                     Activity, Application, navigation, theme, screens, ViewModels, res
 │       ├── debug/                    Debug-only network security config (cleartext to local hosts)
 │       ├── test/                     ViewModel and formatter unit tests (JVM)
 │       └── androidTest/              Compose navigation test and device smoke tests
@@ -235,10 +235,10 @@ the module's source root; the links go to the files.
 
 | File | What it does | Key types or functions | Related tests |
 |---|---|---|---|
-| [send/SendScreen.kt](../androidApp/src/main/kotlin/cashi/payment/oways/ui/send/SendScreen.kt) | Send form, currency dropdown, confirmation dialog, snackbar; stateless content + ViewModel wrapper | `SendScreen()`, `SendPaymentContent()`, `SendPaymentActions` | [SendPaymentE2ETest](../e2e/src/test/kotlin/cashi/payment/oways/e2e/SendPaymentE2ETest.kt) |
+| [send/SendScreen.kt](../androidApp/src/main/kotlin/cashi/payment/oways/ui/send/SendScreen.kt) | Send form in two cards (recipient; amount with the currency dropdown), Send button, confirmation dialog, snackbar; stateless content + ViewModel wrapper | `SendScreen()`, `SendPaymentContent()`, `SendPaymentActions` | [SendPaymentE2ETest](../e2e/src/test/kotlin/cashi/payment/oways/e2e/SendPaymentE2ETest.kt) |
 | [send/SendPaymentUiState.kt](../androidApp/src/main/kotlin/cashi/payment/oways/ui/send/SendPaymentUiState.kt) | The single Send screen state | `SendPaymentUiState`, `FieldError`, `PaymentConfirmation`, `SubmissionStatus` | [SendPaymentViewModelTest](../androidApp/src/test/kotlin/cashi/payment/oways/ui/send/SendPaymentViewModelTest.kt) |
 | [send/SendPaymentViewModel.kt](../androidApp/src/main/kotlin/cashi/payment/oways/ui/send/SendPaymentViewModel.kt) | Holds the form, asks for confirmation, calls the use case, reuses the idempotency key for an unchanged retry | `onSendClick()`, `onConfirm()`, `onStatusShown()` | [SendPaymentViewModelTest](../androidApp/src/test/kotlin/cashi/payment/oways/ui/send/SendPaymentViewModelTest.kt) |
-| [history/HistoryScreen.kt](../androidApp/src/main/kotlin/cashi/payment/oways/ui/history/HistoryScreen.kt) | History list with loading, empty and error states | `HistoryScreen()`, `HistoryContent()` | [SendPaymentE2ETest](../e2e/src/test/kotlin/cashi/payment/oways/e2e/SendPaymentE2ETest.kt) |
+| [history/HistoryScreen.kt](../androidApp/src/main/kotlin/cashi/payment/oways/ui/history/HistoryScreen.kt) | History as cards (recipient initial, recipient, timestamp, amount with currency code), with loading, empty and error states | `HistoryScreen()`, `HistoryContent()` | [SendPaymentE2ETest](../e2e/src/test/kotlin/cashi/payment/oways/e2e/SendPaymentE2ETest.kt) |
 | [history/HistoryUiState.kt](../androidApp/src/main/kotlin/cashi/payment/oways/ui/history/HistoryUiState.kt) | The single History screen state | `HistoryUiState` (`Loading`, `Empty`, `Content`, `Error`), `PaymentItem` | [HistoryViewModelTest](../androidApp/src/test/kotlin/cashi/payment/oways/ui/history/HistoryViewModelTest.kt) |
 | [history/HistoryViewModel.kt](../androidApp/src/main/kotlin/cashi/payment/oways/ui/history/HistoryViewModel.kt) | Maps the live history to UI rows; listens only while the screen is visible (+5 s) | `HistoryViewModel.state`, `onRetry()` | [HistoryViewModelTest](../androidApp/src/test/kotlin/cashi/payment/oways/ui/history/HistoryViewModelTest.kt) |
 | [format/AmountFormatter.kt](../androidApp/src/main/kotlin/cashi/payment/oways/ui/format/AmountFormatter.kt) | Minor units → locale currency text, e.g. "$10.50" | `AmountFormatter.format()` | [AmountFormatterTest](../androidApp/src/test/kotlin/cashi/payment/oways/ui/format/AmountFormatterTest.kt) |
@@ -246,14 +246,28 @@ the module's source root; the links go to the files.
 | [AppTestTags.kt](../androidApp/src/main/kotlin/cashi/payment/oways/ui/AppTestTags.kt) | Stable test tags, which are also the Appium resource ids ([TEST_TAGS.md](TEST_TAGS.md)) | `AppTestTags` | [NavigationTest](../androidApp/src/androidTest/kotlin/cashi/payment/oways/navigation/NavigationTest.kt), [TestIds](../e2e/src/test/kotlin/cashi/payment/oways/e2e/TestIds.kt) |
 | [TestTagsAsResourceIds.kt](../androidApp/src/main/kotlin/cashi/payment/oways/ui/TestTagsAsResourceIds.kt) | Exposes test tags as resource ids (applied at the root and in each dialog/popup window) | `Modifier.testTagsAsResourceIds()` | [SendPaymentE2ETest](../e2e/src/test/kotlin/cashi/payment/oways/e2e/SendPaymentE2ETest.kt) |
 
+### androidApp: theme
+`androidApp/src/main/kotlin/cashi/payment/oways/ui/theme/`
+
+| File | What it does | Key types or functions | Related tests |
+|---|---|---|---|
+| [Theme.kt](../androidApp/src/main/kotlin/cashi/payment/oways/ui/theme/Theme.kt) | The app theme: fixed brand colors in light and dark mode (no dynamic color, D49), type scale and shapes | `CashiTheme()` | [NavigationTest](../androidApp/src/androidTest/kotlin/cashi/payment/oways/navigation/NavigationTest.kt) |
+| [Color.kt](../androidApp/src/main/kotlin/cashi/payment/oways/ui/theme/Color.kt) | Emerald-teal palette as Material 3 tonal roles (every text pair meets WCAG AA contrast) | `LightColors`, `DarkColors` | — |
+| [Type.kt](../androidApp/src/main/kotlin/cashi/payment/oways/ui/theme/Type.kt) | Material 3 type scale on the system font; amount styles with tabular figures | `CashiTypography`, `Typography.amountInput`, `Typography.amountRow` | — |
+| [Shape.kt](../androidApp/src/main/kotlin/cashi/payment/oways/ui/theme/Shape.kt) | Corner radii: 8dp menus, 16dp cards, fields and buttons, 24dp dialogs | `CashiShapes` | — |
+
 ### androidApp: resources and manifest
 | File | What it does |
 |---|---|
-| [AndroidManifest.xml](../androidApp/src/main/AndroidManifest.xml) | Application class, launcher activity, `INTERNET` permission, network security config |
+| [AndroidManifest.xml](../androidApp/src/main/AndroidManifest.xml) | Application class, window theme, launcher activity, `INTERNET` permission, network security config |
+| [res/values/themes.xml](../androidApp/src/main/res/values/themes.xml), [res/values-night/themes.xml](../androidApp/src/main/res/values-night/themes.xml) | Window theme behind Compose with the brand background, so launch shows no off-color flash in light or dark mode |
 | [res/values/strings.xml](../androidApp/src/main/res/values/strings.xml) | Every user-facing text, including "Payment sent" and the error messages |
-| [res/values/dimens.xml](../androidApp/src/main/res/values/dimens.xml) | Shared spacing values |
-| [res/drawable/ic_pay.xml](../androidApp/src/main/res/drawable/ic_pay.xml), [ic_history.xml](../androidApp/src/main/res/drawable/ic_history.xml) | Bottom-bar icons |
-| [res/drawable/ic_launcher_background.xml](../androidApp/src/main/res/drawable/ic_launcher_background.xml), [res/drawable-v24/ic_launcher_foreground.xml](../androidApp/src/main/res/drawable-v24/ic_launcher_foreground.xml), [res/mipmap-anydpi-v26/](../androidApp/src/main/res/mipmap-anydpi-v26/), `res/mipmap-*dpi/` | Launcher icon (adaptive and bitmap densities) |
+| [res/values/dimens.xml](../androidApp/src/main/res/values/dimens.xml) | Shared spacing and size values |
+| [res/drawable/ic_pay.xml](../androidApp/src/main/res/drawable/ic_pay.xml), [ic_history.xml](../androidApp/src/main/res/drawable/ic_history.xml) | Bottom-bar icons (`ic_pay` also on the Send button and in the confirmation dialog) |
+| [res/drawable/ic_mail.xml](../androidApp/src/main/res/drawable/ic_mail.xml), [ic_receipt.xml](../androidApp/src/main/res/drawable/ic_receipt.xml), [ic_error.xml](../androidApp/src/main/res/drawable/ic_error.xml) | Email field icon; History empty and error state icons |
+| [res/drawable/ic_launcher_background.xml](../androidApp/src/main/res/drawable/ic_launcher_background.xml), [res/drawable/ic_launcher_foreground.xml](../androidApp/src/main/res/drawable/ic_launcher_foreground.xml) | Launcher icon layers: teal background and the white coin with a send arrow (also the monochrome layer for themed icons) |
+| [res/mipmap-anydpi-v26/](../androidApp/src/main/res/mipmap-anydpi-v26/) | Adaptive launcher icon (API 26+), square and round, with a monochrome layer |
+| [res/mipmap/](../androidApp/src/main/res/mipmap/) | Launcher icon for API 24–25: the same vectors in a rounded square or circle |
 
 ### server: application and configuration
 `server/src/main/kotlin/cashi/payment/oways/server/`

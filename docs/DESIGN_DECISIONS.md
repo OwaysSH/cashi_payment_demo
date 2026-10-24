@@ -7,7 +7,8 @@ so they can be referenced. How things work is in [ARCHITECTURE.md](ARCHITECTURE.
 
 **Contents:** [Architecture](#architecture) · [Money and validation](#money-and-validation) ·
 [API](#api) · [Idempotency](#idempotency) · [Persistence](#persistence) · [UI](#ui) ·
-[Development and testing](#development-and-testing) · [Known limitations](#known-limitations)
+[Development and testing](#development-and-testing) · [Visual design](#visual-design) ·
+[Known limitations](#known-limitations)
 
 ## Architecture
 
@@ -270,6 +271,16 @@ still work after shrinking. Production path: enable `isMinifyEnabled` and `isShr
 app-specific keep rules where needed, and run a release smoke test against an HTTPS backend
 ([Production hardening](../README.md#production-hardening)). Where: `androidApp/build.gradle.kts`
 (release build type), `androidApp/proguard-rules.pro`.
+
+## Visual design
+
+**D49. Fixed brand colors in light and dark mode, not dynamic color.**
+Why: a payment app is recognized by its brand; with Material You's wallpaper-based colors the app,
+its screenshots and the demo video would look different on every device. The palette (emerald teal
+with an amber accent) is defined as full Material 3 tonal roles for both modes, and every text and
+background pair meets WCAG AA contrast. Alternative: `dynamicLightColorScheme`/`dynamicDarkColorScheme`
+on Android 12+ (the app would blend in with the system, at the cost of a consistent identity).
+Where: `androidApp/…/ui/theme/`.
 
 ## Known limitations
 

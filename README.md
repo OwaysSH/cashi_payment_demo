@@ -336,7 +336,7 @@ ViewModels), SKIE for Swift-friendly Flows, and SwiftUI screens. Details and a s
 
 ## Design decisions
 
-All 48 decisions, with reasons, alternatives and trade-offs, are in
+All 49 decisions, with reasons, alternatives and trade-offs, are in
 [docs/DESIGN_DECISIONS.md](docs/DESIGN_DECISIONS.md). The most important:
 
 - **Money in minor units** (D8): `Double` only at the API boundary (per the brief), exact `Long`
