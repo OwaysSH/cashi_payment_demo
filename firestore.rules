@@ -1,0 +1,31 @@
+rules_version = '2';
+
+// Payments are written by the app only after the backend accepted them.
+// No authentication in this demo: see README "Production hardening".
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /payments/{paymentId} {
+      allow read: if true;
+      allow create: if isValidPayment(request.resource.data);
+      allow update, delete: if false;
+    }
+
+    function isValidPayment(payment) {
+      let fields = ['recipientEmail', 'amountMinor', 'currency', 'timestamp'];
+      return payment.keys().hasOnly(fields)
+        && payment.keys().hasAll(fields)
+        && isValidEmail(payment.recipientEmail)
+        && payment.amountMinor is int
+        && payment.amountMinor > 0
+        && payment.currency in ['USD', 'EUR']
+        && payment.timestamp == request.time;
+    }
+
+    function isValidEmail(email) {
+      return email is string
+        && email.size() <= 254
+        && email.matches('^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$');
+    }
+  }
+}

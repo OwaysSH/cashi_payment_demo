@@ -1,0 +1,42 @@
+# Secrets and machine-specific config
+google-services.json
+local.properties
+
+# Gradle / Kotlin build output
+.gradle/
+.kotlin/
+build/
+!src/**/build/
+
+# Android
+captures/
+.externalNativeBuild/
+.cxx/
+
+# IDE and OS
+.idea/
+*.iml
+.DS_Store
+
+# Firebase CLI and emulators
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+*-debug.log
+firebase-export-*/
+
+# Performance tests (JMeter)
+*.jtl
+perf/report/
+perf/results/
+jmeter.log
+
+# Node
+node_modules/
+
+# Local notes and tooling (kept on this machine, not published)
+/CLAUDE.md
+/docs/STATUS.md
+/docs/PROGRESS.md
+.claude/
