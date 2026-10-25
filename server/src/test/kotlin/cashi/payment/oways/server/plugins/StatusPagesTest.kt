@@ -37,7 +37,13 @@ class StatusPagesTest {
                 contentType(ContentType.Application.Json)
                 setBody(body)
             }
-            assertError(HttpStatusCode.BadRequest, ApiErrorCode.MALFORMED_REQUEST, response, body)
+            assertError(
+                HttpStatusCode.BadRequest,
+                ApiErrorCode.MALFORMED_REQUEST,
+                "Request body is missing, malformed or has invalid field types",
+                response,
+                body,
+            )
         }
     }
 
@@ -50,21 +56,31 @@ class StatusPagesTest {
             setBody("hello")
         }
 
-        assertError(HttpStatusCode.UnsupportedMediaType, ApiErrorCode.UNSUPPORTED_MEDIA_TYPE, response)
+        assertError(
+            HttpStatusCode.UnsupportedMediaType,
+            ApiErrorCode.UNSUPPORTED_MEDIA_TYPE,
+            "Content-Type must be application/json",
+            response,
+        )
     }
 
     @Test
     fun unknownRoute_returnsNotFound() = testApplication {
         installServerModule()
 
-        assertError(HttpStatusCode.NotFound, ApiErrorCode.NOT_FOUND, client.get("/nope"))
+        assertError(HttpStatusCode.NotFound, ApiErrorCode.NOT_FOUND, "Resource not found", client.get("/nope"))
     }
 
     @Test
     fun wrongMethod_returnsMethodNotAllowed() = testApplication {
         installServerModule()
 
-        assertError(HttpStatusCode.MethodNotAllowed, ApiErrorCode.METHOD_NOT_ALLOWED, client.get(PAYMENTS_PATH))
+        assertError(
+            HttpStatusCode.MethodNotAllowed,
+            ApiErrorCode.METHOD_NOT_ALLOWED,
+            "HTTP method not allowed for this resource",
+            client.get(PAYMENTS_PATH),
+        )
     }
 
     @Test
@@ -76,7 +92,7 @@ class StatusPagesTest {
 
         val response = client.get(FAILING_PATH)
 
-        assertError(HttpStatusCode.InternalServerError, ApiErrorCode.INTERNAL_ERROR, response)
+        assertError(HttpStatusCode.InternalServerError, ApiErrorCode.INTERNAL_ERROR, "Unexpected server error", response)
         assertFalse(response.bodyAsText().contains(SECRET_DETAIL))
     }
 
@@ -87,12 +103,14 @@ class StatusPagesTest {
     private suspend fun assertError(
         expectedStatus: HttpStatusCode,
         expectedCode: ApiErrorCode,
+        expectedMessage: String,
         response: HttpResponse,
-        message: String? = null,
+        context: String? = null,
     ) {
-        assertEquals(expectedStatus, response.status, message)
+        assertEquals(expectedStatus, response.status, context)
         val error = ApiJson.decodeFromString<ErrorResponse>(response.bodyAsText())
-        assertEquals(expectedCode.wireValue, error.code, message)
+        assertEquals(expectedCode.wireValue, error.code, context)
+        assertEquals(expectedMessage, error.message, context)
     }
 
     private companion object {

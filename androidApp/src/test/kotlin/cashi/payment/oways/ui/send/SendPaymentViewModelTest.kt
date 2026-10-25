@@ -200,14 +200,20 @@ class SendPaymentViewModelTest {
     }
 
     @Test
-    fun serverValidationError_showsFieldError() = runTest(dispatcher) {
-        api.failWith = PaymentError.InvalidEmail
+    fun serverValidationErrors_showFieldErrorOnTheMatchingField() = runTest(dispatcher) {
+        mapOf(
+            PaymentError.InvalidEmail to FieldError(FormField.EMAIL, R.string.error_invalid_recipient),
+            PaymentError.InvalidAmount to FieldError(FormField.AMOUNT, R.string.error_invalid_amount),
+            PaymentError.UnsupportedCurrency to FieldError(FormField.CURRENCY, R.string.error_unsupported_currency),
+        ).forEach { (error, expected) ->
+            api.failWith = error
 
-        sendValidPayment()
+            sendValidPayment()
 
-        val state = viewModel.state.value
-        assertEquals(SubmissionStatus.Idle, state.status)
-        assertEquals(FieldError(FormField.EMAIL, R.string.error_invalid_recipient), state.fieldError)
+            val state = viewModel.state.value
+            assertEquals(SubmissionStatus.Idle, state.status, error.toString())
+            assertEquals(expected, state.fieldError, error.toString())
+        }
     }
 
     @Test

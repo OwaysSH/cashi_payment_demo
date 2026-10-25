@@ -49,6 +49,8 @@ class KtorPaymentApiErrorTest {
             HttpStatusCode.BadRequest to "INVALID_IDEMPOTENCY_KEY",
             HttpStatusCode.UnprocessableEntity to "IDEMPOTENCY_KEY_MISMATCH",
             HttpStatusCode.UnsupportedMediaType to "UNSUPPORTED_MEDIA_TYPE",
+            HttpStatusCode.NotFound to "NOT_FOUND",
+            HttpStatusCode.MethodNotAllowed to "METHOD_NOT_ALLOWED",
             HttpStatusCode.InternalServerError to "INTERNAL_ERROR",
             HttpStatusCode.TooManyRequests to "RATE_LIMITED",
         ).forEach { (status, code) ->

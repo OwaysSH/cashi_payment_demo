@@ -75,7 +75,13 @@ class IdempotencyRoutesTest {
         val response = postPayment("""{"recipientEmail":"alice@example.com","amount":99,"currency":"USD"}""", KEY)
 
         assertEquals(HttpStatusCode.UnprocessableEntity, response.status)
-        assertEquals(ApiErrorCode.IDEMPOTENCY_KEY_MISMATCH.wireValue, response.error().code)
+        assertEquals(
+            ErrorResponse(
+                ApiErrorCode.IDEMPOTENCY_KEY_MISMATCH.wireValue,
+                "Idempotency-Key was already used with a different payment",
+            ),
+            response.error(),
+        )
         assertEquals(1, idGenerator.generatedCount)
     }
 
@@ -87,7 +93,14 @@ class IdempotencyRoutesTest {
             val response = postPayment(VALID_BODY, key)
 
             assertEquals(HttpStatusCode.BadRequest, response.status, key)
-            assertEquals(ApiErrorCode.INVALID_IDEMPOTENCY_KEY.wireValue, response.error().code, key)
+            assertEquals(
+                ErrorResponse(
+                    ApiErrorCode.INVALID_IDEMPOTENCY_KEY.wireValue,
+                    "Idempotency-Key must be 1-255 printable ASCII characters without surrounding whitespace",
+                ),
+                response.error(),
+                key,
+            )
         }
         assertEquals(0, idGenerator.generatedCount)
     }

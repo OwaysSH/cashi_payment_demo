@@ -16,7 +16,6 @@ import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 
 class PaymentRoutesTest {
 
@@ -53,17 +52,19 @@ class PaymentRoutesTest {
         installServerModule()
 
         mapOf(
-            """{"recipientEmail":"not-an-email","amount":10.5,"currency":"USD"}""" to ApiErrorCode.INVALID_EMAIL,
-            """{"recipientEmail":"alice@example.com","amount":0,"currency":"USD"}""" to ApiErrorCode.INVALID_AMOUNT,
+            """{"recipientEmail":"not-an-email","amount":10.5,"currency":"USD"}""" to
+                ErrorResponse(ApiErrorCode.INVALID_EMAIL.wireValue, "Invalid recipient email"),
+            """{"recipientEmail":"alice@example.com","amount":0,"currency":"USD"}""" to ErrorResponse(
+                ApiErrorCode.INVALID_AMOUNT.wireValue,
+                "Amount must be greater than 0, have at most 2 decimals and not exceed 1,000,000.00",
+            ),
             """{"recipientEmail":"alice@example.com","amount":10.5,"currency":"GBP"}""" to
-                ApiErrorCode.UNSUPPORTED_CURRENCY,
-        ).forEach { (body, expectedCode) ->
+                ErrorResponse(ApiErrorCode.UNSUPPORTED_CURRENCY.wireValue, "Supported currencies: USD, EUR"),
+        ).forEach { (body, expectedError) ->
             val response = postPayment(body)
 
             assertEquals(HttpStatusCode.BadRequest, response.status, body)
-            val error = ApiJson.decodeFromString<ErrorResponse>(response.bodyAsText())
-            assertEquals(expectedCode.wireValue, error.code, body)
-            assertTrue(error.message.isNotBlank(), body)
+            assertEquals(expectedError, ApiJson.decodeFromString<ErrorResponse>(response.bodyAsText()), body)
         }
     }
 
