@@ -20,11 +20,15 @@ flowchart LR
         AppDI["CashiApplication<br/>Koin + BuildConfig"]
     end
 
+    subgraph core["shared-core (KMP: android + jvm)"]
+        Rules["domain rules<br/>models · PaymentValidator · minor units<br/>Outcome · PaymentError"]
+        Contract["api<br/>PaymentRequest/Response · ErrorResponse<br/>ApiJson · ApiHeaders"]
+    end
+
     subgraph shared["shared (KMP: android + jvm)"]
         subgraph common["commonMain"]
-            Domain["domain<br/>models · PaymentValidator · AmountParser<br/>minor units · Outcome · errors<br/>use cases · ports (PaymentApi, PaymentStore)"]
+            Domain["domain<br/>use cases · ports (PaymentApi, PaymentStore)<br/>AmountParser · SentPayment · store errors"]
             Remote["data/remote<br/>KtorPaymentApi"]
-            Contract["api<br/>PaymentRequest/Response · ErrorResponse<br/>ApiJson · ApiHeaders"]
             DI["di<br/>sharedModule() · expect platformModule()"]
         end
         subgraph androidMain["androidMain"]
@@ -45,17 +49,23 @@ flowchart LR
 
     UI --> VM --> Domain
     AppDI --> DI
+    Domain --> Rules
     Domain --> Remote --> Contract
     Remote -- "HTTP JSON + Idempotency-Key" --> Routes
-    Routes --> Service --> Domain
+    Routes --> Service --> Rules
     Service --> Idem
     Routes --> Contract
     Domain --> Fire --> Firestore
 ```
 
-- **`shared`** holds everything that isn't UI: the domain, the use cases, the API client and the
-  API contract. Its `jvm()` target exists for the **server**, which reuses the same validator,
-  money conversion and request/response models, so client and server rules can't drift apart.
+- **`shared-core`** holds the API contract and the core domain rules: the models, `PaymentValidator`,
+  minor-unit conversion, `Outcome` and `PaymentError`. Its only dependency is kotlinx-serialization.
+  The **server** depends on it alone, so it reuses the same validator, money conversion and
+  request/response models (client and server rules can't drift apart) without receiving the
+  client's Ktor setup, Koin or Firebase (D50).
+- **`shared`** holds the rest of the non-UI code: the use cases and ports, `AmountParser`, the API
+  client, DI and the Firestore store. It exposes `shared-core` with `api(...)`, so the app sees one
+  set of shared types. Its `jvm()` target runs the Cucumber and Koin graph tests.
 - **`androidApp`** is presentation only: Compose screens, thin ViewModels, and the Koin start-up
   where build-specific values (`BuildConfig`) enter the graph.
 - **Firebase lives only in `shared/androidMain`.** `commonMain` and the server never see it.
@@ -64,12 +74,13 @@ flowchart LR
 
 | Layer | Where | Contents | May depend on |
 |---|---|---|---|
-| Domain | `shared/commonMain/…/domain` | `Payment`, `PaymentDraft`, `ValidatedPayment`, `Currency`, `IdempotencyKey`, `SentPayment`; `PaymentValidator`, `AmountParser`; `toMinorUnits` / `toMajorUnits`; `Outcome`; `PaymentError`, `PaymentStoreError`; `SendPaymentUseCase`, `ObservePaymentsUseCase`; ports `PaymentApi`, `PaymentStore` | Kotlin stdlib and coroutines only |
-| API contract | `shared/commonMain/…/api` | `PaymentRequest`, `PaymentResponse`, `ErrorResponse`, `ApiErrorCode`, `ApiHeaders`, `ApiJson`, `StrictJsonDoubleSerializer` | kotlinx.serialization |
+| Core domain rules | `shared-core/commonMain/…/domain` | `Payment`, `PaymentDraft`, `ValidatedPayment`, `Currency`, `IdempotencyKey`; `PaymentValidator`; `toMinorUnits` / `toMajorUnits`; `Outcome`; `PaymentError` | Kotlin stdlib only |
+| Domain (use cases) | `shared/commonMain/…/domain` | `SentPayment`, `PaymentOrdering`, `AmountParser`, `PaymentStoreError`; `SendPaymentUseCase`, `ObservePaymentsUseCase`; ports `PaymentApi`, `PaymentStore` | Core domain rules, Kotlin stdlib and coroutines |
+| API contract | `shared-core/commonMain/…/api` | `PaymentRequest`, `PaymentResponse`, `ErrorResponse`, `ApiErrorCode`, `ApiHeaders`, `ApiJson`, `StrictJsonDoubleSerializer` | kotlinx.serialization |
 | Data | `shared/commonMain/…/data/remote`, `shared/androidMain/…/data` | `KtorPaymentApi` (+ error mapping, timeouts), `createOkHttpEngine()`, `FirestorePaymentStore` (+ document mapping), `createFirestorePaymentStore()` | Domain, API contract, Ktor, Firebase (androidMain only) |
 | DI | `shared/…/di` | `sharedModule()`, `PaymentConfig`, `expect fun platformModule()` with Android and JVM actuals | All of the above, Koin |
 | Presentation | `androidApp` | `SendScreen` / `HistoryScreen` (stateless content + thin wrappers), `SendPaymentViewModel`, `HistoryViewModel`, `AmountFormatter`, `TimestampFormatter`, navigation | Domain use cases and models only (never data classes or Firebase), Compose, Koin |
-| Backend | `server` | Routes, `PaymentService`, `IdempotencyStore`, StatusPages error mapping | Domain + API contract via `shared`'s `jvm()` target |
+| Backend | `server` | Routes, `PaymentService`, `IdempotencyStore`, StatusPages error mapping | Core domain rules + API contract via `shared-core`'s `jvm()` target |
 
 Rules that keep it clean:
 - The **domain depends on nothing platform-specific**. `ValidatedPayment` can only be created by
@@ -159,13 +170,13 @@ actual fun platformModule(): Module = module {
     single<PaymentStore> { createFirestorePaymentStore(get<PaymentConfig>().firestoreEmulator) }
 }
 
-// jvmMain (the server's target; the server doesn't use Koin)
+// jvmMain (used by the JVM tests; the server depends on shared-core and doesn't use Koin)
 actual fun platformModule(): Module = module { }
 ```
 
 Why not `expect class PaymentStore`:
 - An **interface** can be faked in every test (unit, Cucumber, ViewModel) without platform code.
-- With an expect class, the **JVM target** (the server) would need a Firestore actual it never uses.
+- With an expect class, the **JVM target** would need a Firestore actual it never uses.
 - The same **contract test** (`PaymentStoreContractTest`) runs against the in-memory fake on the JVM
   and against the real `FirestorePaymentStore` on a device, which proves both behave the same.
 
@@ -206,8 +217,9 @@ entry. (Verified on a device: stopping the server, then retrying, created exactl
 
 | Layer | Tests | Runs on |
 |---|---|---|
-| Domain: validation, parsing, money, `Outcome`, models | `PaymentValidatorTest`, `AmountParserTest`, `MinorUnitsTest`, `OutcomeTest`, `CurrencyTest`, `IdempotencyKeyTest` | JVM + Android host |
-| API contract | `PaymentContractSerializationTest`, `ErrorContractTest`, `StrictJsonDoubleSerializerTest` | JVM + Android host |
+| Core domain rules (`shared-core`): validation, money, `Outcome`, models | `PaymentValidatorTest`, `MinorUnitsTest`, `OutcomeTest`, `CurrencyTest`, `IdempotencyKeyTest` | JVM + Android host |
+| Amount parsing (`shared`) | `AmountParserTest` | JVM + Android host |
+| API contract (`shared-core`) | `PaymentContractSerializationTest`, `ErrorContractTest`, `StrictJsonDoubleSerializerTest` | JVM + Android host |
 | API client | `KtorPaymentApiTest`, `KtorPaymentApiErrorTest` (Ktor MockEngine), `PaymentApiMappersTest` | JVM + Android host |
 | Store contract | `PaymentStoreContractTest` on `InMemoryPaymentStore`; the same contract on `FirestorePaymentStore` (`FirestorePaymentStoreContractTest`) | JVM; device + Firestore emulator |
 | Firestore mapping | `PaymentDocumentTest` | Android host |
@@ -223,8 +235,8 @@ entry. (Verified on a device: stopping the server, then retrying, created exactl
 ## Cross-platform potential (iOS)
 
 Android is the only implemented platform, but most of the logic is already platform-independent.
-About three quarters of `shared`'s production code (323 of 435 lines, excluding blank lines,
-comments and imports) is in `commonMain`.
+About three quarters of the production code in `shared` and `shared-core` together (323 of 435 lines,
+excluding blank lines, comments and imports) is in `commonMain`.
 
 **Reusable on iOS today, unchanged:**
 - Domain models, `PaymentValidator`, `AmountParser`, minor-unit conversion, `Outcome` and the error
@@ -238,14 +250,14 @@ comments and imports) is in `commonMain`.
 
 | Piece | How |
 |---|---|
-| iOS targets | `iosArm64()` and `iosSimulatorArm64()` in `shared/build.gradle.kts`, exported as an XCFramework |
+| iOS targets | `iosArm64()` and `iosSimulatorArm64()` in `shared-core/build.gradle.kts` and `shared/build.gradle.kts`, with `shared` exported as an XCFramework |
 | HTTP engine | Ktor **Darwin** engine (`ktor-client-darwin`) in `iosMain` |
 | `actual fun platformModule()` for iOS | Provides the Darwin engine and an iOS `PaymentStore` |
 | `PaymentStore` on iOS | Either the **GitLive firebase-kotlin-sdk** (Kotlin Firestore API for KMP, so the store can live in `iosMain` or even `commonMain`), or **Swift with the Firebase iOS SDK** implementing the exported `PaymentStore` interface. Either way it must pass `PaymentStoreContractTest`. |
-| Module split | `shared` → **`shared-core`** (domain, contract, client; used by the server) + **`shared-presentation`** (multiplatform ViewModels for both apps). This also keeps `ktor-client` and Koin off the server's classpath, where they currently arrive unused through the `jvm()` target. |
+| Presentation module | **`shared-presentation`** (multiplatform ViewModels for both apps), next to the existing `shared` and `shared-core` (D50). The server keeps depending on `shared-core` only. |
 | Swift interop | **SKIE**, so `Flow`s become Swift `AsyncSequence`s and sealed types become exhaustive Swift enums |
 | UI | **SwiftUI** screens that observe the shared ViewModels |
 
-**Suggested order:** add the iOS targets and the Darwin engine → split `shared-core` /
+**Suggested order:** add the iOS targets (to `shared-core` and `shared`) and the Darwin engine → add
 `shared-presentation` and move the ViewModel logic → implement the iOS `PaymentStore` and run the
 contract test → add SKIE → build the SwiftUI screens. The Android app keeps working at every step.

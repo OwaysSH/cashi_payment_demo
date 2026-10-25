@@ -1,9 +1,10 @@
 # Cashi Payment App
 
 A Kotlin Multiplatform (KMP) payment app. Android is the implemented platform; all business logic
-(models, validation, use cases, API client, persistence contracts) lives in the `shared` module so
-another platform such as iOS can reuse it. A Ktor backend in this repo exposes `POST /payments` and
-reuses the same shared models and validator.
+(models, validation, use cases, API client, persistence contracts) lives in shared KMP modules so
+another platform such as iOS can reuse it: `shared-core` (API contract and core domain rules) and
+`shared` (use cases, API client, DI, Firestore). A Ktor backend in this repo exposes
+`POST /payments` and depends only on `shared-core`, so it reuses the same models and validator.
 
 **Contents:** [Quick start](#quick-start) · [Where to look first](#where-to-look-first) ·
 [Tech stack](#tech-stack-and-versions) · [Repository layout](#repository-layout) ·
@@ -60,9 +61,9 @@ first:
 
 | File | Why |
 |---|---|
-| [`PaymentValidator.kt`](shared/src/commonMain/kotlin/cashi/payment/oways/shared/domain/validation/PaymentValidator.kt) | The one validator used by both the app and the server (email → currency → amount, first failure wins). |
+| [`PaymentValidator.kt`](shared-core/src/commonMain/kotlin/cashi/payment/oways/shared/domain/validation/PaymentValidator.kt) | The one validator used by both the app and the server (email → currency → amount, first failure wins). |
 | [`AmountParser.kt`](shared/src/commonMain/kotlin/cashi/payment/oways/shared/domain/validation/AmountParser.kt) | Form amount parsing that counts fraction digits in the text, so `"1,500"` can't silently become 1.50. |
-| [`MinorUnits.kt`](shared/src/commonMain/kotlin/cashi/payment/oways/shared/domain/money/MinorUnits.kt) | Exact `Double` → `Long` cents conversion at the API boundary, with the business limit. |
+| [`MinorUnits.kt`](shared-core/src/commonMain/kotlin/cashi/payment/oways/shared/domain/money/MinorUnits.kt) | Exact `Double` → `Long` cents conversion at the API boundary, with the business limit. |
 | [`SendPaymentUseCase.kt`](shared/src/commonMain/kotlin/cashi/payment/oways/shared/domain/usecase/SendPaymentUseCase.kt) | The shared send flow: validate → backend → history; a history failure never reads as "payment failed". |
 | [`FirestorePaymentStore.kt`](shared/src/androidMain/kotlin/cashi/payment/oways/shared/data/firestore/FirestorePaymentStore.kt) | Firestore behind the `PaymentStore` interface: idempotent save under write-once rules, real-time `callbackFlow`. |
 | [`SendPaymentViewModel.kt`](androidApp/src/main/kotlin/cashi/payment/oways/ui/send/SendPaymentViewModel.kt) | Thin ViewModel: one UiState, confirmation, and idempotency-key reuse while the payment content is unchanged. |
@@ -81,8 +82,8 @@ first:
 | kotlinx.serialization / kotlinx.coroutines | 1.12.0 / 1.11.0 |
 | Koin | 4.2.2 |
 | Firebase BoM (Firestore) / google-services plugin | 35.1.0 / 4.5.0 |
-| Tests: JUnit 6 (shared `jvmTest`, server, e2e) | 6.1.3 |
-| Tests: JUnit 4 (androidApp unit and device tests; shared Android host and device tests) | 4.13.2 |
+| Tests: JUnit 6 (`jvmTest` of shared and shared-core, server, e2e) | 6.1.3 |
+| Tests: JUnit 4 (androidApp unit and device tests; Android host tests of shared and shared-core; shared device tests) | 4.13.2 |
 | Tests: Cucumber / Turbine / Ktor MockEngine | 8.0.4 / 1.2.1 / 3.6.0 |
 | Tools: Firebase CLI | 15.34.1 |
 | Tools: JMeter | 5.6.3 |
@@ -94,9 +95,10 @@ All library versions are managed in [gradle/libs.versions.toml](gradle/libs.vers
 
 | Path | Contents |
 |---|---|
-| `shared/` | KMP library (targets: `android`, `jvm`). Domain, use cases, Ktor client, `PaymentStore` interface, Koin `sharedModule()` + `expect fun platformModule()`. Firestore only in `androidMain`. |
+| `shared-core/` | KMP library (targets: `android`, `jvm`). The API contract and the core domain rules: models, `PaymentValidator`, minor units, `Outcome`, `PaymentError`. Only kotlinx-serialization; used by `shared` and the server. |
+| `shared/` | KMP library (targets: `android`, `jvm`). Use cases, `AmountParser`, Ktor client, `PaymentStore` interface, Koin `sharedModule()` + `expect fun platformModule()`; exposes `shared-core` with `api(...)`. Firestore only in `androidMain`. |
 | `androidApp/` | Jetpack Compose UI, ViewModels, Koin setup (`CashiApplication`), `BuildConfig` connection settings. |
-| `server/` | Ktor backend (JVM), depends on `shared` through its `jvm()` target. Port `8080`. |
+| `server/` | Ktor backend (JVM), depends only on `shared-core` through its `jvm()` target. Port `8080`. |
 | `perf/` | JMeter load test for `POST /payments` (plain folder; see [perf/README.md](perf/README.md)). |
 | `e2e/` | Appium UI tests: a standalone Gradle build, not part of the app build (`./gradlew -p e2e test --rerun`; see [e2e/README.md](e2e/README.md)). |
 | `docs/` | [Project tour](docs/PROJECT_TOUR.md), [Architecture](docs/ARCHITECTURE.md), [Design decisions](docs/DESIGN_DECISIONS.md), [Demo walkthrough](docs/DEMO.md), [API contract](docs/API.md), [UI test ids](docs/TEST_TAGS.md). |
@@ -161,8 +163,8 @@ Invalid values fail the build with a clear message (`api.baseUrl` must start wit
 
 ### Backend (server)
 
-The `server` module is a Ktor (Netty) app. It depends on `shared` through its `jvm()` target and
-reuses the same `PaymentValidator`, money conversion and API models (`PaymentRequest`,
+The `server` module is a Ktor (Netty) app. It depends only on `shared-core` through its `jvm()`
+target and reuses the same `PaymentValidator`, money conversion and API models (`PaymentRequest`,
 `PaymentResponse`, `ErrorResponse`) as the app, so client and server rules can't drift apart.
 
 **Start it** (listens on `http://127.0.0.1:8080`):
@@ -245,7 +247,8 @@ locally.
 
 | Scope | Command | Expected |
 |---|---|---|
-| Shared logic: validation, money, API client (MockEngine), use cases, store contract on a fake | `./gradlew :shared:allTests` (= `:shared:jvmTest` + `:shared:testAndroidHostTest`) | All pass |
+| Core rules and API contract: validation, money, `Outcome`, models, JSON contract | `./gradlew :shared-core:allTests` (= `:shared-core:jvmTest` + `:shared-core:testAndroidHostTest`) | All pass |
+| Shared logic: amount parsing, API client (MockEngine), use cases, store contract on a fake | `./gradlew :shared:allTests` (= `:shared:jvmTest` + `:shared:testAndroidHostTest`) | All pass |
 | Cucumber BDD scenarios (payment creation, transaction listing; part of `jvmTest`) | `./gradlew :shared:jvmTest` | 3 scenarios pass; report at `shared/build/reports/cucumber/cucumber.html` |
 | Server (Ktor `testApplication`: routes, errors, idempotency) | `./gradlew :server:test`, or run configuration **Server tests** | All pass |
 | App ViewModels and formatting (JVM unit tests) | `./gradlew :androidApp:testDebugUnitTest` | All pass |
@@ -307,14 +310,17 @@ in [docs/API.md](docs/API.md).
 
 Full explanation with diagrams: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-- **`shared` (KMP: `android` + `jvm`)** holds everything that isn't UI. The **domain** (models,
-  `PaymentValidator`, `AmountParser`, minor-unit money, `Outcome`, errors, use cases) has no
-  platform dependencies. It defines the ports `PaymentApi` and `PaymentStore`, which the **data**
+- **`shared-core` (KMP: `android` + `jvm`)** holds the API contract and the core domain rules
+  (models, `PaymentValidator`, minor-unit money, `Outcome`, `PaymentError`), with only
+  kotlinx-serialization as a dependency.
+- **`shared` (KMP: `android` + `jvm`)** holds the rest of the non-UI code and exposes `shared-core`.
+  The **domain** (use cases, `AmountParser`, history models) has no platform dependencies. It defines the ports `PaymentApi` and `PaymentStore`, which the **data**
   layer implements (`KtorPaymentApi`; `FirestorePaymentStore` in `androidMain` only).
 - **`androidApp`** is presentation only: stateless Compose content, thin ViewModels with one UiState
   per screen, and `CashiApplication`, the only place `BuildConfig` enters the Koin graph.
-- **`server`** reuses the same validator, money conversion and API models through `shared`'s `jvm()`
-  target, so client and server rules can't drift apart.
+- **`server`** reuses the same validator, money conversion and API models through `shared-core`'s
+  `jvm()` target, so client and server rules can't drift apart, and nothing from `shared` (its Ktor
+  client setup, Koin, Firebase) reaches the server (D50).
 - **expect/actual** sits at the DI boundary: `expect fun platformModule()` provides the OkHttp engine
   and the Firestore store on Android, and is empty on the JVM. `PaymentStore` stays an interface,
   so every layer can be tested with fakes, and one contract test runs against both the fake and
@@ -325,18 +331,18 @@ Full explanation with diagrams: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Cross-platform potential
 
-About three quarters of `shared`'s production code is platform-independent and would run on iOS
-unchanged: the domain and validation, both use cases, the Ktor client with its error mapping, the
-API contract, the `PaymentStore` contract tests and Koin's `sharedModule()`. An iOS app would add
-the iOS targets, the Ktor Darwin engine, an iOS `actual fun platformModule()`, a `PaymentStore`
-(GitLive firebase-kotlin-sdk, or Swift with the Firebase iOS SDK behind the interface), a split of
-`shared` into `shared-core` (also used by the server) and `shared-presentation` (multiplatform
-ViewModels), SKIE for Swift-friendly Flows, and SwiftUI screens. Details and a suggested order:
+About three quarters of the production code in `shared` and `shared-core` is platform-independent
+and would run on iOS unchanged: the domain and validation, both use cases, the Ktor client with its
+error mapping, the API contract, the `PaymentStore` contract tests and Koin's `sharedModule()`. An
+iOS app would add the iOS targets, the Ktor Darwin engine, an iOS `actual fun platformModule()`, a
+`PaymentStore` (GitLive firebase-kotlin-sdk, or Swift with the Firebase iOS SDK behind the
+interface), a `shared-presentation` module (multiplatform ViewModels) next to `shared` and
+`shared-core`, SKIE for Swift-friendly Flows, and SwiftUI screens. Details and a suggested order:
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#cross-platform-potential-ios).
 
 ## Design decisions
 
-All 49 decisions, with reasons, alternatives and trade-offs, are in
+All 50 decisions, with reasons, alternatives and trade-offs, are in
 [docs/DESIGN_DECISIONS.md](docs/DESIGN_DECISIONS.md). The most important:
 
 - **Money in minor units** (D8): `Double` only at the API boundary (per the brief), exact `Long`

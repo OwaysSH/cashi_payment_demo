@@ -56,6 +56,7 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
+            api(project(":shared-core"))
             api(project.dependencies.platform(libs.koin.bom))
             api(libs.koin.core)
             api(libs.kotlinx.coroutines.core)

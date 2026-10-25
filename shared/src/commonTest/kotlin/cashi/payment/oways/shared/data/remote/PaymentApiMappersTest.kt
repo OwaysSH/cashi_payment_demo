@@ -4,7 +4,7 @@ import cashi.payment.oways.shared.api.PaymentRequest
 import cashi.payment.oways.shared.api.PaymentResponse
 import cashi.payment.oways.shared.domain.model.Currency
 import cashi.payment.oways.shared.domain.model.Payment
-import cashi.payment.oways.shared.domain.model.ValidatedPayment
+import cashi.payment.oways.shared.testing.validatedPayment
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -22,7 +22,7 @@ class PaymentApiMappersTest {
 
     @Test
     fun toRequest_convertsMinorUnitsToMajorAmount() {
-        val request = ValidatedPayment("alice@example.com", 1050L, Currency.EUR).toRequest()
+        val request = validatedPayment(currency = Currency.EUR).toRequest()
 
         assertEquals(PaymentRequest("alice@example.com", 10.5, "EUR"), request)
     }

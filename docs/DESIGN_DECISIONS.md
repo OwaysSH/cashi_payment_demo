@@ -8,15 +8,14 @@ so they can be referenced. How things work is in [ARCHITECTURE.md](ARCHITECTURE.
 **Contents:** [Architecture](#architecture) · [Money and validation](#money-and-validation) ·
 [API](#api) · [Idempotency](#idempotency) · [Persistence](#persistence) · [UI](#ui) ·
 [Development and testing](#development-and-testing) · [Visual design](#visual-design) ·
-[Known limitations](#known-limitations)
+[Modules](#modules) · [Known limitations](#known-limitations)
 
 ## Architecture
 
-**D1. `shared` targets `android` and `jvm`; the server depends on it.**
+**D1. The shared modules target `android` and `jvm`; the server depends on the shared rules.**
 Why: the server reuses the same `PaymentValidator`, money conversion and API models, so client and
-server validation can never disagree. Alternative: a separate server-side copy of the rules.
-Trade-off: `ktor-client` and Koin reach the server's classpath unused (see
-[limitations](#known-limitations)).
+server validation can never disagree. Alternative: a separate server-side copy of the rules. The
+server depends on `shared-core` only (D50).
 
 **D2. UI in `androidApp` with Jetpack Compose, not Compose Multiplatform in `shared`.**
 Why: the brief asks for Jetpack Compose, and keeping UI out of `shared` keeps the server's `jvm()`
@@ -26,7 +25,7 @@ leak into the server). iOS would get SwiftUI ([ARCHITECTURE.md](ARCHITECTURE.md#
 **D3. ViewModels in `androidApp`, kept thin.**
 Why: standard Jetpack ViewModels with `koinViewModel()`; they only orchestrate shared code and map
 results to one UiState. Alternative: KMP ViewModels in `shared` now. Deferred to a future
-`shared-presentation` module, so the server's dependency (`shared-core`) stays lean.
+`shared-presentation` module; the server's dependency (`shared-core`, D50) stays lean either way.
 
 **D4. `PaymentStore` is an interface; expect/actual sits at the DI boundary.**
 Decision: `expect fun platformModule(): Module` provides the OkHttp engine and the Firestore store on
@@ -282,6 +281,27 @@ background pair meets WCAG AA contrast. Alternative: `dynamicLightColorScheme`/`
 on Android 12+ (the app would blend in with the system, at the cost of a consistent identity).
 Where: `androidApp/…/ui/theme/`.
 
+## Modules
+
+**D50. `shared-core`: the API contract and core domain rules in their own module.**
+Decision: `shared-core` (KMP: `android` + `jvm`, only kotlinx-serialization) holds the API contract
+(`PaymentRequest`, `PaymentResponse`, `ErrorResponse`, `ApiErrorCode`, `ApiHeaders`, `ApiJson`,
+`StrictJsonDoubleSerializer`) and the core domain rules (`Payment`, `PaymentDraft`,
+`ValidatedPayment`, `Currency`, `IdempotencyKey`, `PaymentValidator`, minor units, `Outcome`,
+`PaymentError`). `shared` exposes it with `api(...)`; the server depends on it alone. The packages
+stay the same, so no import changed.
+Why: the server's classpath holds only what it uses; `shared`'s Ktor client setup, Koin and Firebase
+no longer reach it. (Ktor server 3.6 still brings `ktor-client-core` itself, through
+`ktor-server-content-negotiation` → `ktor-server-routing-openapi` → `ktor-server-auth`.)
+Alternative: keep one module and exclude the client libraries on the server (fragile, and the server
+could still compile against client code), or a JVM-only core module (then `shared`'s Android target
+couldn't use it).
+Trade-off: one more module; three packages (`domain.model`, `domain.error`, `domain.validation`)
+span both modules; `AmountParser` stays in `shared` because only the clients parse typed amounts.
+`ValidatedPayment`'s internal constructor is now closed to `shared` too, so its tests get one
+through the validator (`validatedPayment()`).
+Where: `shared-core/`, `shared/build.gradle.kts`, `server/build.gradle.kts`.
+
 ## Known limitations
 
 - **Single-instance idempotency store** (memory, lost on restart): production needs a shared store
@@ -293,7 +313,5 @@ Where: `androidApp/…/ui/theme/`.
   distinguished from the rounded value and are accepted as `10.00`; a string amount would remove this
   (D8).
 - **Long offline periods:** a save times out as `Unavailable` and syncs later (D27).
-- **Unused `ktor-client` and Koin on the server's classpath** until `shared` is split into
-  `shared-core` / `shared-presentation` (D1, [ARCHITECTURE.md](ARCHITECTURE.md#cross-platform-potential-ios)).
 - **No iOS app yet:** the shared logic is ready; what iOS would add is in
   [ARCHITECTURE.md](ARCHITECTURE.md#cross-platform-potential-ios).

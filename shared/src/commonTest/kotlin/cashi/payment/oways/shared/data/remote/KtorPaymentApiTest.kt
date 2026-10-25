@@ -5,8 +5,8 @@ import cashi.payment.oways.shared.domain.error.PaymentError
 import cashi.payment.oways.shared.domain.model.Currency
 import cashi.payment.oways.shared.domain.model.IdempotencyKey
 import cashi.payment.oways.shared.domain.model.Payment
-import cashi.payment.oways.shared.domain.model.ValidatedPayment
 import cashi.payment.oways.shared.domain.result.Outcome
+import cashi.payment.oways.shared.testing.validatedPayment
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockRequestHandleScope
 import io.ktor.client.engine.mock.respond
@@ -26,7 +26,7 @@ import kotlin.time.Instant
 
 class KtorPaymentApiTest {
 
-    private val payment = ValidatedPayment("alice@example.com", 1050L, Currency.USD)
+    private val payment = validatedPayment()
     private val key = IdempotencyKey.random()
 
     @Test
